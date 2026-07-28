@@ -1,0 +1,46 @@
+version: 2
+
+project_name: lazytui
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - main: ./cmd
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.gitCommit={{.ShortCommit}}
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  use: github
+
+# Auto-generate the Homebrew formula and push it to the personal tap repo.
+# Triggered automatically by `goreleaser release` (see .github/workflows/release.yml).
+brews:
+  - name: lazytui
+    repository:
+      owner: maybewaityou
+      name: homebrew-tap
+      # A cross-repo PAT is required: the default GITHUB_TOKEN cannot write
+      # to another repository. Set HOMEBREW_TAP_GITHUB_TOKEN in CI.
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: https://github.com/maybewaityou/lazytui
+    description: "General-purpose local CRUD TUI template for the lazy-series tools."
+    license: Apache-2.0
+    directory: Formula
+    # lazytui is a pure Go binary with no external runtime dependencies —
+    # unlike lazytmux, it does NOT shell out to tmux, so no `dependencies`
+    # block is needed here.
+    test: |
+      system "#{bin}/lazytui", "--help"
