@@ -128,3 +128,27 @@ func renderTagChips(tags []string) string {
 	}
 	return strings.Join(chips, " ")
 }
+
+// renderTagBadgesForList renders at most two tag chips for a list row (space is
+// tight) and collapses any overflow into a dim "+N" marker, matching the
+// lazyssh/lazytmux list style. Use this for list rows; reach for renderTagChips
+// in the details pane where there is room to show every tag. Returns "" when
+// there are no tags so the row tail stays clean. (Ported from lazytmux utils.go.)
+func renderTagBadgesForList(tags []string) string {
+	if len(tags) == 0 {
+		return ""
+	}
+	const maxTags = 2
+	shown := tags
+	if len(tags) > maxTags {
+		shown = tags[:maxTags]
+	}
+	parts := make([]string, 0, len(shown)+1)
+	for _, t := range shown {
+		parts = append(parts, tagChip(t))
+	}
+	if extra := len(tags) - len(shown); extra > 0 {
+		parts = append(parts, fmt.Sprintf("[%s]+%d[-]", colorDim, extra))
+	}
+	return strings.Join(parts, " ")
+}

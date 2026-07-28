@@ -153,8 +153,10 @@ func (il *ItemList) refreshTitle() {
 
 // formatItemLine renders one list row: the pinned marker (fixed 2 visible
 // cells so pinned/unpinned rows stay aligned), the item name, and the tag
-// chips. Tag chips reuse renderTagChips (render.go) so chip styling stays
-// single-sourced; Pinned is the only per-row marker this list renders.
+// badges. Tag badges reuse renderTagBadgesForList (render.go), which caps the
+// row at two chips and collapses any overflow into a dim "+N" — list space is
+// tight, unlike the details pane that shows every tag. Chip styling stays
+// single-sourced in render.go; Pinned is the only per-row marker here.
 func formatItemLine(it domain.Item) string {
 	// pin column: fixed 2 visible cells so pinned/unpinned rows stay aligned.
 	pin := "  "
@@ -163,8 +165,8 @@ func formatItemLine(it domain.Item) string {
 	}
 	name := "[" + colorPrimary + "::b]" + it.Name + "[-]"
 	line := fmt.Sprintf("%s %s", pin, name)
-	if chips := renderTagChips(it.Tags); chips != "" {
-		line += "  " + chips
+	if badges := renderTagBadgesForList(it.Tags); badges != "" {
+		line += "  " + badges
 	}
 	return line
 }

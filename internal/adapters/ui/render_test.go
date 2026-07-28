@@ -125,6 +125,37 @@ func TestRenderTagChips(t *testing.T) {
 	}
 }
 
+func TestRenderTagBadgesForList(t *testing.T) {
+	// Empty input returns "" so an untagged list row keeps a clean tail.
+	if got := renderTagBadgesForList(nil); got != "" {
+		t.Fatalf("expected empty, got %q", got)
+	}
+	// Up to two tags render in full, with no overflow marker.
+	two := renderTagBadgesForList([]string{"a", "b"})
+	if !strings.Contains(two, "[black:"+colorAccent+"] a [-:-:-]") {
+		t.Fatalf("missing first badge, got %q", two)
+	}
+	if !strings.Contains(two, "[black:"+colorAccent+"] b [-:-:-]") {
+		t.Fatalf("missing second badge, got %q", two)
+	}
+	if strings.Contains(two, "+") {
+		t.Fatalf("no overflow marker expected for 2 tags, got %q", two)
+	}
+	// Three tags truncate to two plus a dim "+1"; the third chip must be dropped.
+	three := renderTagBadgesForList([]string{"a", "b", "c"})
+	if !strings.Contains(three, "["+colorDim+"]+1[-]") {
+		t.Fatalf("missing +1 overflow marker, got %q", three)
+	}
+	if strings.Contains(three, "[black:"+colorAccent+"] c ") {
+		t.Fatalf("third tag must be truncated, got %q", three)
+	}
+	// Four tags truncate to two plus a dim "+2".
+	four := renderTagBadgesForList([]string{"a", "b", "c", "d"})
+	if !strings.Contains(four, "["+colorDim+"]+2[-]") {
+		t.Fatalf("missing +2 overflow marker, got %q", four)
+	}
+}
+
 func TestSplitCSV(t *testing.T) {
 	// Empty string returns nil (no tags), not a one-element slice.
 	if got := splitCSV(""); got != nil {
