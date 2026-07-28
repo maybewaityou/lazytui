@@ -17,6 +17,7 @@ package ui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/rivo/tview"
 )
@@ -151,4 +152,37 @@ func renderTagBadgesForList(tags []string) string {
 		parts = append(parts, fmt.Sprintf("[%s]+%d[-]", colorDim, extra))
 	}
 	return strings.Join(parts, " ")
+}
+
+// humanizeDuration renders a timestamp as a relative, human-readable duration
+// (e.g. "5m ago", "2h ago", "3d ago"). A zero time yields "never" so an unset
+// timestamp reads as a state, not a moment in 1970. Used for the details pane's
+// created field alongside its absolute time. (Ported from lazytmux utils.go.)
+func humanizeDuration(t time.Time) string {
+	if t.IsZero() {
+		return "never"
+	}
+	d := time.Since(t)
+	switch {
+	case d < time.Minute:
+		return "just now"
+	case d < time.Hour:
+		return fmt.Sprintf("%dm ago", int(d.Minutes()))
+	case d < 48*time.Hour:
+		return fmt.Sprintf("%dh ago", int(d.Hours()))
+	case d < 60*24*time.Hour:
+		return fmt.Sprintf("%dd ago", int(d.Hours())/24)
+	case d < 365*24*time.Hour:
+		months := int(d.Hours()) / (24 * 30)
+		if months < 1 {
+			months = 1
+		}
+		return fmt.Sprintf("%dmo ago", months)
+	default:
+		years := int(d.Hours()) / (24 * 365)
+		if years < 1 {
+			years = 1
+		}
+		return fmt.Sprintf("%dy ago", years)
+	}
 }

@@ -15,6 +15,7 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
@@ -56,7 +57,7 @@ func (d *ItemDetails) Render(it domain.Item) {
 		{Title: "Basic", Fields: []Field{
 			{Label: "name", Value: it.Name, Kind: FieldText},
 			{Label: "pinned", Value: boolStr(it.Pinned), Kind: FieldText},
-			{Label: "created", Value: it.Created.Format("2006-01-02 15:04"), Kind: FieldText},
+			{Label: "created", Value: fmt.Sprintf("%s · %s", it.Created.Format("2006-01-02 15:04"), humanizeDuration(it.Created)), Kind: FieldText},
 		}},
 	}
 	if len(it.Tags) > 0 || it.Note != "" {

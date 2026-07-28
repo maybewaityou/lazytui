@@ -17,6 +17,7 @@ package ui
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/rivo/tview"
 )
@@ -170,5 +171,25 @@ func TestSplitCSV(t *testing.T) {
 		if got[i] != want[i] {
 			t.Fatalf("idx %d = %q, want %q", i, got[i], want[i])
 		}
+	}
+}
+
+func TestHumanizeDuration(t *testing.T) {
+	// A zero timestamp is a state ("never"), not a moment in 1970.
+	if got := humanizeDuration(time.Time{}); got != "never" {
+		t.Fatalf("zero time: want %q, got %q", "never", got)
+	}
+	// Relative durations are anchored to now, so build inputs from time.Now().
+	if got := humanizeDuration(time.Now()); got != "just now" {
+		t.Fatalf("now: want %q, got %q", "just now", got)
+	}
+	if got := humanizeDuration(time.Now().Add(-5 * time.Minute)); got != "5m ago" {
+		t.Fatalf("5m: want %q, got %q", "5m ago", got)
+	}
+	if got := humanizeDuration(time.Now().Add(-2 * time.Hour)); got != "2h ago" {
+		t.Fatalf("2h: want %q, got %q", "2h ago", got)
+	}
+	if got := humanizeDuration(time.Now().Add(-3 * 24 * time.Hour)); got != "3d ago" {
+		t.Fatalf("3d: want %q, got %q", "3d ago", got)
 	}
 }
