@@ -214,8 +214,8 @@ func TestModifyAbsentReturnsErrNotFound(t *testing.T) {
 	svc := NewItemService(repo)
 
 	cases := []struct {
-		op   string
-		err  error
+		op  string
+		err error
 	}{
 		{"TogglePin", svc.TogglePin("ghost")},
 		{"SaveTags", svc.SaveTags("ghost", nil)},

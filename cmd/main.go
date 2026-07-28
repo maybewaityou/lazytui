@@ -14,7 +14,18 @@
 
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/spf13/cobra"
+
+	"github.com/maybewaityou/lazytui/internal/adapters/data/store"
+	"github.com/maybewaityou/lazytui/internal/adapters/ui"
+	"github.com/maybewaityou/lazytui/internal/core/services"
+	"github.com/maybewaityou/lazytui/internal/logger"
+)
 
 var (
 	version   = "develop"
@@ -22,5 +33,37 @@ var (
 )
 
 func main() {
-	fmt.Println("lazytui skeleton")
+	log, err := logger.New("LAZYTUI")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	//nolint:errcheck // log.Sync error safe to ignore
+	defer log.Sync()
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		log.Errorw("home dir", "error", err)
+		os.Exit(1)
+	}
+	dataPath := filepath.Join(home, ".lazytui", "items.json")
+
+	repo, err := store.NewStore(dataPath)
+	if err != nil {
+		log.Errorw("store", "error", err)
+		os.Exit(1)
+	}
+	svc := services.NewItemService(repo)
+	t := ui.NewTUI(log, svc, version, gitCommit)
+
+	root := &cobra.Command{
+		Use:   ui.AppName,
+		Short: "Lazy TUI — generic list/details manager (template)",
+		RunE:  func(*cobra.Command, []string) error { return t.Run() },
+	}
+	root.SilenceUsage = true
+	if err := root.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }

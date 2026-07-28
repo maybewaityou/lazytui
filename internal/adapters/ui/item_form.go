@@ -108,7 +108,7 @@ func newItemForm(title string, initial domain.Item, onSubmit func(domain.Item), 
 		onCancel: onCancel,
 	}
 	f.form.SetBorder(true).
-		SetTitle(" " + title + " ").
+		SetTitle(" "+title+" ").
 		SetTitleColor(tcell.GetColor(colorTitle)).
 		SetBorderColor(tcell.GetColor(colorBorder)).
 		// Clear the vertical border padding. tview.NewForm defaults to a padding

@@ -32,10 +32,10 @@ func centerModal(p tview.Primitive, width, height int) tview.Primitive {
 	return tview.NewFlex().
 		AddItem(nil, 0, 1, false). // left spacer
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-			AddItem(nil, 0, 1, false).  // top spacer
+			AddItem(nil, 0, 1, false).   // top spacer
 			AddItem(p, height, 0, true). // content
 			AddItem(nil, 0, 1, false),   // bottom spacer
-			width, 0, true).
+						width, 0, true).
 		AddItem(nil, 0, 1, false) // right spacer
 }
 

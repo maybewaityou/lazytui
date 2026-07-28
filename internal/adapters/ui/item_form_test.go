@@ -285,7 +285,7 @@ func TestNewItemFormTitleInfersNewVsEdit(t *testing.T) {
 // yields a mountable widget for both the New and Edit flows.
 func TestNewItemFormReturnsCenteredPrimitive(t *testing.T) {
 	for _, init := range []domain.Item{
-		{},                         // New
+		{},                          // New
 		{Name: "api", Pinned: true}, // Edit
 	} {
 		p := NewItemForm(init, func(domain.Item) {}, func() {})
