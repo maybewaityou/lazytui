@@ -14,5 +14,32 @@
 
 package ui
 
-// AppName is the binary name and cobra Use string.
-const AppName = "lazytui"
+const (
+	AppName = "lazytui"
+	RepoURL = "github.com/maybewaityou/lazytui"
+	Banner  = `
+   _                 _         _
+  | |               | |       (_)
+  | | __ _ _____   _| |_ _   _ _
+  | |/ _` + "`" + ` |_  / | | | __| | | | |
+  | | (_| |/ /| |_| | |_| |_| | |
+  |_|\__,_/___|\__, |\__|\__,_|_|
+               __/ |
+              |___/
+`
+)
+
+// Tokyo Night palette (see plan Global Constraints).
+const (
+	colorBorder    = "#292e42"
+	colorTitle     = "#7dcfff"
+	colorPrimary   = "#c0caf5"
+	colorSecondary = "#565f89"
+	colorAccent    = "#7aa2f7"
+	colorGreen     = "#9ece6a"
+	colorYellow    = "#e0af68"
+	colorPurple    = "#bb9af7"
+	colorCyan      = "#7dcfff"
+	colorDim       = "#414868"
+	colorSelected  = "#33467c"
+)
