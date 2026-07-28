@@ -48,10 +48,14 @@ type Section struct {
 }
 
 // detailLabelWidth is the visible width every detail label is padded to (the
-// 2-space indent plus label and colon), sized to the longest label
-// "  last attached:" so all values start at the same column. tview color tags
-// occupy bytes but no visible width, so padding must use tview.TaggedStringWidth,
-// not fmt's %-N.
+// 2-space indent plus label and colon), so all values start at the same column.
+// Sized comfortably above the longest lazytui label (e.g. "  created:") — the
+// value is locked by render_test.go, so changing it here will fail the width
+// assertion there. tview color tags occupy bytes but no visible width, so
+// padding must use tview.TaggedStringWidth, not fmt's %-N. (The original
+// lazytmux sized this to its "  last attached:" field; that tmux concept does
+// not exist in lazytui, but the wider column is retained for visual
+// consistency across the toolchain and to keep the snapshot test stable.)
 const detailLabelWidth = 16
 
 // RenderSections renders grouped fields with a colored title per section and

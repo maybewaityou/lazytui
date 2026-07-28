@@ -19,7 +19,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-// SearchBar is the fuzzy-search input above the session list.
+// SearchBar is the fuzzy-search input above the item list.
 type SearchBar struct {
 	*tview.InputField
 	onSearch   func(string)

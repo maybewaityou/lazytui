@@ -95,3 +95,45 @@ func TestKeyBindingsFooterDerivation(t *testing.T) {
 		}
 	}
 }
+
+// TestKeyBindingsHaveHandlers is the reverse invariant of
+// TestKeyBindingsComplete: it verifies that every rune advertised in
+// keyBindings actually has a handler in handleGlobalKeys (via the
+// globalRuneHandlers dispatch table). This is the test that would have caught
+// the original dead-binding bug — keyBindings registered "c" → "Clear tags"
+// but handleGlobalKeys had no case for it, so pressing 'c' was a silent no-op.
+//
+// Scope: only single-rune keys are cross-checked here. Multi-rune / named keys
+// (↑↓, ←/→, Enter) are widget-delegated (↑↓ falls through to the list) or
+// handled as tcell.Key events in the e.Key() switch — neither class is a rune,
+// so they are out of scope for this dispatch table.
+func TestKeyBindingsHaveHandlers(t *testing.T) {
+	dispatched := dispatchedRunes()
+
+	// Sanity: the dispatch table is non-empty and the helper is wired.
+	if len(dispatched) == 0 {
+		t.Fatal("dispatchedRunes() is empty — globalRuneHandlers not wired")
+	}
+
+	// Every single-rune keyBinding must have a handler.
+	for _, kb := range keyBindings {
+		rs := []rune(kb.Key)
+		if len(rs) != 1 {
+			// Widget-delegated (↑↓) or tcell.Key-handled (←/→, Enter) — not a
+			// rune dispatched by globalRuneHandlers.
+			continue
+		}
+		r := rs[0]
+		if !dispatched[r] {
+			t.Errorf("keyBinding %q (%s: %s) has no handler in globalRuneHandlers — registered but dead",
+				kb.Key, kb.Group, kb.Action)
+		}
+	}
+
+	// Regression guard for the original gap: 'c' (Clear tags) was registered
+	// in keyBindings with no handler, so pressing it was a silent no-op. If
+	// this fails, the clear-tags handler has been removed or renamed away.
+	if !dispatched['c'] {
+		t.Error("rune 'c' (Clear tags) must be dispatched — regression of the dead-binding bug")
+	}
+}

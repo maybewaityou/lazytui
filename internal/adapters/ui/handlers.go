@@ -34,10 +34,76 @@ const colorRed = "#f7768e"
 // items") stays visible before reverting to the default keybinding hints.
 const statusToastTimeout = 3 * time.Second
 
+// keyHandler binds a rune to the action it triggers. The slice is the
+// data-driven counterpart to keyBindings: every rune advertised in
+// keyBindings (that is not widget-delegated) must have an entry here, and
+// TestKeyBindingsHaveHandlers cross-checks exactly that invariant — so adding
+// a binding to keyBindings without a handler here is caught at test time
+// (the original "c → Clear tags" dead-binding bug).
+//
+// The handlers are closures over the *TUI receiver passed at dispatch time, so
+// the slice itself is stateless and safe to introspect from tests.
+type keyHandler struct {
+	key    rune
+	action func(t *TUI)
+}
+
+// globalRuneHandlers is the single source of rune→action dispatch for
+// handleGlobalKeys. Order is not significant (each key is unique) but is kept
+// in the same grouping as keyBindings for readability. The navigation arrows
+// (↑↓/←/→) and Enter are intentionally absent: ↑↓ falls through to the list's
+// own InputCapture, and ←/→/Enter are handled in the e.Key() switch below —
+// they are tcell.Key events, not runes.
+var globalRuneHandlers = []keyHandler{
+	{'/', func(t *TUI) { t.focusSearch() }},
+	{'q', func(t *TUI) { t.app.Stop() }},
+	{'r', func(t *TUI) {
+		count := t.refresh()
+		t.setStatusTemporary(refreshStatusMessage(count))
+	}},
+	{'a', func(t *TUI) { t.openNewItemForm() }},
+	{'e', func(t *TUI) { t.actOnSelected(t.openEditItemForm) }},
+	{'d', func(t *TUI) { t.actOnSelected(t.showDeleteConfirmModal) }},
+	{'p', func(t *TUI) {
+		t.actOnSelected(func(it domain.Item) {
+			if err := t.svc.TogglePin(it.Name); err == nil {
+				t.refresh()
+			} else {
+				t.setStatusTemporary("[" + colorRed + "]Pin failed[-]")
+			}
+		})
+	}},
+	{'n', func(t *TUI) { t.actOnSelected(t.editNote) }},
+	{'c', func(t *TUI) {
+		// Clear tags: SaveTags with nil wipes the item's tags, then refresh
+		// re-syncs the list and details pane. No confirm gate — clearing is
+		// trivially reversible by re-editing, mirroring editNote's reasoning.
+		t.actOnSelected(func(it domain.Item) {
+			_ = t.svc.SaveTags(it.Name, nil)
+			t.refresh()
+		})
+	}},
+	{'f', func(t *TUI) { t.openTagFilter() }},
+	{'?', func(t *TUI) { t.openHelp() }},
+}
+
+// dispatchedRunes returns the set of runes handleGlobalKeys dispatches via
+// globalRuneHandlers. Exposed for TestKeyBindingsHaveHandlers so the test can
+// cross-check keyBindings against the real dispatch table without instantiating
+// a TUI (which would need a live *tview.Application for some handlers).
+func dispatchedRunes() map[rune]bool {
+	out := make(map[rune]bool, len(globalRuneHandlers))
+	for _, h := range globalRuneHandlers {
+		out[h.key] = true
+	}
+	return out
+}
+
 // handleGlobalKeys is the root key handler, mounted on t.root via
-// SetInputCapture. It dispatches the CRUD actions (a/e/d/r/p/n/f) plus the
-// navigation keys (/, q, ?, arrows, Enter). When the search bar is focused it
-// gets out of the way so typing flows through unchanged.
+// SetInputCapture. It dispatches the CRUD/metadata actions
+// (a/e/d/r/p/n/c/f) plus the navigation keys (/, q, ?, arrows, Enter) via the
+// data-driven globalRuneHandlers table. When the search bar is focused it gets
+// out of the way so typing flows through unchanged.
 //
 // All tmux-specific actions from lazytmux (EnterSession / Kill / Detach /
 // CurrentSession / suspend / clipboard copy) are gone. Enter here means "dive
@@ -47,44 +113,13 @@ func (t *TUI) handleGlobalKeys(e *tcell.EventKey) *tcell.EventKey {
 	if t.searchBarHasFocus() {
 		return e
 	}
-	switch e.Rune() {
-	case '/':
-		t.focusSearch()
-		return nil
-	case 'q':
-		t.app.Stop()
-		return nil
-	case 'r':
-		count := t.refresh()
-		t.setStatusTemporary(refreshStatusMessage(count))
-		return nil
-	case 'p':
-		t.actOnSelected(func(it domain.Item) {
-			if err := t.svc.TogglePin(it.Name); err == nil {
-				t.refresh()
-			} else {
-				t.setStatusTemporary("[" + colorRed + "]Pin failed[-]")
+	if r := e.Rune(); r != 0 {
+		for _, h := range globalRuneHandlers {
+			if h.key == r {
+				h.action(t)
+				return nil
 			}
-		})
-		return nil
-	case 'a':
-		t.openNewItemForm()
-		return nil
-	case 'e':
-		t.actOnSelected(t.openEditItemForm)
-		return nil
-	case 'd':
-		t.actOnSelected(t.showDeleteConfirmModal)
-		return nil
-	case 'n':
-		t.actOnSelected(t.editNote)
-		return nil
-	case 'f':
-		t.openTagFilter()
-		return nil
-	case '?':
-		t.openHelp()
-		return nil
+		}
 	}
 	switch e.Key() {
 	case tcell.KeyRight:
@@ -310,27 +345,23 @@ func (t *TUI) editNote(current domain.Item) {
 	t.app.SetFocus(form.Area())
 }
 
-// showDeleteConfirmModal asks for confirmation, then deletes. ConfirmModal sets
-// up the visuals and wires onYes to the "Confirm" button; we re-wrap
-// SetDoneFunc afterwards so every dismissal path (Confirm, Cancel, Esc) also
-// restores the main layout — ConfirmModal's own done func only runs onYes and
-// would leave the modal mounted on Cancel/Esc.
+// showDeleteConfirmModal asks for confirmation, then deletes. ConfirmModal
+// self-manages the confirm/cancel split (Confirm/Enter → onConfirm, Cancel/Esc
+// → onCancel), so both callbacks only need to handle their own side effects
+// plus unmounting — no SetDoneFunc re-wrap required.
 func (t *TUI) showDeleteConfirmModal(current domain.Item) {
 	msg := fmt.Sprintf("Delete item %s?\n\nThis action cannot be undone.", current.Name)
-	onYes := func() {
-		if err := t.svc.Delete(current.Name); err == nil {
-			t.refresh()
-		} else {
-			t.setStatusTemporary("[" + colorRed + "]Delete failed[-]")
-		}
-	}
-	modal := ConfirmModal("Delete", msg, onYes)
-	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-		if buttonLabel == "Confirm" {
-			onYes()
-		}
-		t.closeModal()
-	})
+	modal := ConfirmModal("Delete", msg,
+		func() { // onConfirm
+			if err := t.svc.Delete(current.Name); err == nil {
+				t.refresh()
+			} else {
+				t.setStatusTemporary("[" + colorRed + "]Delete failed[-]")
+			}
+			t.closeModal()
+		},
+		func() { t.closeModal() }, // onCancel (Cancel button or Esc)
+	)
 	t.app.SetRoot(modal, true)
 }
 

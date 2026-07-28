@@ -114,7 +114,9 @@ func (s *Store) mutate(fn func(d *fileModel)) error {
 	return s.save()
 }
 
-// save backs up the original file the first time, then writes atomically.
+// save backs up the original file the first time, then writes atomically. Both
+// the temp file and the backup are written 0600: items.json carries the user's
+// private notes and tags, so world/group readability is not appropriate.
 func (s *Store) save() error {
 	if err := s.backupOriginalOnce(); err != nil {
 		return err
@@ -124,7 +126,7 @@ func (s *Store) save() error {
 		return err
 	}
 	tmp := s.path + ".tmp"
-	if err := os.WriteFile(tmp, b, 0o644); err != nil {
+	if err := os.WriteFile(tmp, b, 0o600); err != nil {
 		return err
 	}
 	return os.Rename(tmp, s.path)
@@ -142,7 +144,7 @@ func (s *Store) backupOriginalOnce() error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(backup, src, 0o644)
+	return os.WriteFile(backup, src, 0o600)
 }
 
 // relocate moves a single map entry with mv semantics: the target is cleared

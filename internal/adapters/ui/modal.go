@@ -39,21 +39,30 @@ func centerModal(p tview.Primitive, width, height int) tview.Primitive {
 		AddItem(nil, 0, 1, false) // right spacer
 }
 
-// ConfirmModal returns a centered yes/no confirmation modal.
+// ConfirmModal returns a centered yes/no confirmation modal that self-manages
+// its confirm/cancel semantics.
 //
-// "Confirm" (or Enter on the focused button) runs onYes; "Cancel" or Esc
-// dismisses without side effects. The caller is responsible for unmounting
-// the modal after onYes (or wiring the cancel path) — this helper only
-// builds the widget, mirroring lazytmux's show*ConfirmModal constructors.
+// "Confirm" (or Enter on the focused button — Confirm is focused by default)
+// runs onConfirm; "Cancel" or Esc runs onCancel. Both callbacks are invoked by
+// the modal's own SetDoneFunc, so callers only need to pass the two callbacks
+// (typically: perform the action + closeModal on confirm, closeModal on cancel)
+// — there is no need to re-wrap SetDoneFunc afterwards, which was the trap with
+// the single-callback variant (onCancel/Esc would leave the modal mounted).
+//
 // Mount it via app.SetRoot(ConfirmModal(...), true) directly, or wrap with
 // centerModal when a fixed on-screen size is desired.
-func ConfirmModal(title, msg string, onYes func()) *tview.Modal {
+func ConfirmModal(title, msg string, onConfirm func(), onCancel func()) *tview.Modal {
 	m := tview.NewModal().
 		SetText(msg).
 		AddButtons([]string{"Confirm", "Cancel"}).
 		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			// tview reports Esc as buttonLabel "" (buttonIndex -1), so any
+			// non-"Confirm" dismissal routes to onCancel — Esc and the Cancel
+			// button are handled identically.
 			if buttonLabel == "Confirm" {
-				onYes()
+				onConfirm()
+			} else {
+				onCancel()
 			}
 		})
 	m.SetBorder(true).
