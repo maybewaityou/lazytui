@@ -25,6 +25,7 @@ import (
 	"github.com/maybewaityou/lazytui/internal/adapters/ui"
 	"github.com/maybewaityou/lazytui/internal/core/services"
 	"github.com/maybewaityou/lazytui/internal/logger"
+	"github.com/maybewaityou/lazytui/internal/tz"
 )
 
 var (
@@ -40,6 +41,15 @@ func main() {
 	}
 	//nolint:errcheck // log.Sync error safe to ignore
 	defer log.Sync()
+
+	// Resolve the real local timezone before anything formats a time. Without
+	// this, Termux/Android silently falls back to UTC (its zoneinfo lives under a
+	// non-standard $PREFIX path Go's LoadLocation never searches), so every
+	// .Local() timestamp renders hours off on a CST device. tz.Init embeds the
+	// tzdb and rebinds time.Local from $TZ / Android getprop.
+	if name := tz.Init(); name != "" {
+		log.Infow("timezone resolved", "zone", name)
+	}
 
 	home, err := os.UserHomeDir()
 	if err != nil {
