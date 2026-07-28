@@ -27,3 +27,13 @@ type Service interface {
 	SaveTags(name string, tags []string) error
 	SaveNote(name string, note string) error
 }
+
+// ErrNotFound is the sentinel returned by Service methods that read-modify-write
+// a single Item (TogglePin / SaveTags / SaveNote) when no Item with the given
+// Name exists. It is a distinct type so callers can errors.Is against it without
+// matching on a fragile string.
+var ErrNotFound = errSentinel("item not found")
+
+type errSentinel string
+
+func (e errSentinel) Error() string { return string(e) }
