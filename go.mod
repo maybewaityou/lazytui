@@ -1,6 +1,6 @@
 module github.com/maybewaityou/lazytui
 
-go 1.26.5
+go 1.24.6
 
 require (
 	github.com/atotto/clipboard v0.1.4
